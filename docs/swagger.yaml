@@ -1,0 +1,428 @@
+basePath: /api/v1
+definitions:
+  dto.ConversationDetailsResponse:
+    properties:
+      completed_at:
+        type: string
+      context:
+        additionalProperties: true
+        type: object
+      created_at:
+        type: string
+      current_step:
+        type: string
+      customer_id:
+        type: string
+      flow_id:
+        type: string
+      id:
+        type: string
+      intent:
+        type: string
+      messages:
+        items:
+          $ref: '#/definitions/dto.MessageDTO'
+        type: array
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.CreateConversationRequest:
+    properties:
+      initial_message:
+        type: string
+      type:
+        enum:
+        - natural_language
+        - guided_flow
+        type: string
+    required:
+    - type
+    type: object
+  dto.CreateConversationResponse:
+    properties:
+      conversation_id:
+        type: string
+      intent:
+        type: string
+      message:
+        $ref: '#/definitions/dto.MessageDTO'
+      type:
+        type: string
+    type: object
+  dto.CreateReturnRequest:
+    properties:
+      collection_point:
+        type: string
+      conversation_id:
+        type: string
+      delivery_method:
+        type: string
+      detailed_reason:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/dto.ReturnItemDTO'
+        minItems: 1
+        type: array
+      order_number:
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      reason:
+        type: string
+      refund_method:
+        type: string
+      shipping_address:
+        type: string
+    required:
+    - delivery_method
+    - items
+    - order_number
+    - reason
+    - refund_method
+    type: object
+  dto.CreateReturnResponse:
+    properties:
+      estimated_refund_date:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      refund_amount_cents:
+        type: integer
+      return_reference:
+        type: string
+      status:
+        type: string
+    type: object
+  dto.MessageDTO:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      role:
+        type: string
+    type: object
+  dto.ReturnItemDTO:
+    properties:
+      order_item_id:
+        type: string
+      product_id:
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - order_item_id
+    - product_id
+    - quantity
+    type: object
+  dto.ReturnRequestDTO:
+    properties:
+      collection_point:
+        type: string
+      conversation_id:
+        type: string
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      delivery_method:
+        type: string
+      detailed_reason:
+        type: string
+      estimated_refund_date:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/dto.ReturnItemDTO'
+        type: array
+      order_number:
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      reason:
+        type: string
+      refund_amount_cents:
+        type: integer
+      refund_method:
+        type: string
+      return_reference:
+        type: string
+      shipping_address:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.SendMessageRequest:
+    properties:
+      content:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+    required:
+    - content
+    type: object
+  dto.SendMessageResponse:
+    properties:
+      assistant_message:
+        $ref: '#/definitions/dto.MessageDTO'
+      user_message:
+        $ref: '#/definitions/dto.MessageDTO'
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@bash.com
+    name: API Support
+  description: API for customer support conversations and return request management
+    with Orders API integration
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Customer Support API
+  version: 0.2.0
+paths:
+  /conversations:
+    post:
+      consumes:
+      - application/json
+      description: Create a new customer support conversation (natural language or
+        guided flow)
+      parameters:
+      - description: Conversation creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateConversationResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new conversation
+      tags:
+      - Conversations
+  /conversations/{id}:
+    get:
+      description: Retrieve a conversation with all its messages
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ConversationDetailsResponse'
+        "404":
+          description: Conversation not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get conversation details
+      tags:
+      - Conversations
+  /conversations/{id}/messages:
+    get:
+      description: Retrieve all messages in a conversation
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/dto.MessageDTO'
+              type: array
+            type: object
+        "404":
+          description: Conversation not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get conversation messages
+      tags:
+      - Conversations
+    post:
+      consumes:
+      - application/json
+      description: Send a user message and receive an AI assistant response
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Message content
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SendMessageResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Send a message in a conversation
+      tags:
+      - Conversations
+  /returns:
+    get:
+      description: Retrieve all return requests for the authenticated customer
+      parameters:
+      - description: Customer ID (defaults to demo-customer-123)
+        in: query
+        name: customer_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/dto.ReturnRequestDTO'
+              type: array
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List return requests
+      tags:
+      - Returns
+    post:
+      consumes:
+      - application/json
+      description: Create a new return request with order validation and automatic
+        refund calculation
+      parameters:
+      - description: Return request details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateReturnRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateReturnResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a return request
+      tags:
+      - Returns
+  /returns/{id}:
+    get:
+      description: Retrieve detailed information about a specific return request
+      parameters:
+      - description: Return Request ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ReturnRequestDTO'
+        "404":
+          description: Return not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get return request details
+      tags:
+      - Returns
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
