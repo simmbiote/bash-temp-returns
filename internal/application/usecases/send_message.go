@@ -5,21 +5,25 @@ import (
 	"customer-support-api/internal/application/dto"
 	"customer-support-api/internal/domain/entities"
 	"customer-support-api/internal/domain/repositories"
+	"customer-support-api/internal/domain/services"
 	"customer-support-api/internal/pkg/errors"
 )
 
 type SendMessageUseCase struct {
 	convRepo    repositories.ConversationRepository
 	messageRepo repositories.MessageRepository
+	aiClient    services.AIClient
 }
 
 func NewSendMessageUseCase(
 	convRepo repositories.ConversationRepository,
 	messageRepo repositories.MessageRepository,
+	aiClient services.AIClient,
 ) *SendMessageUseCase {
 	return &SendMessageUseCase{
 		convRepo:    convRepo,
 		messageRepo: messageRepo,
+		aiClient:    aiClient,
 	}
 }
 
@@ -51,12 +55,38 @@ func (uc *SendMessageUseCase) Execute(
 		return nil, errors.NewDatabaseError("failed to save user message", err)
 	}
 
-	// TODO: Process message with AI/intent classification
-	// For now, create a simple assistant response
+	// Get conversation history for context
+	conversationMessagesPtr, err := uc.messageRepo.GetByConversationID(ctx, conversationID)
+	if err != nil {
+		conversationMessagesPtr = []*entities.Message{}
+	}
+
+	// Convert to value slice for AI client
+	conversationMessages := make([]entities.Message, len(conversationMessagesPtr))
+	for i, msg := range conversationMessagesPtr {
+		conversationMessages[i] = *msg
+	}
+
+	// Classify intent using AI
+	classification, err := uc.aiClient.ClassifyIntent(ctx, req.Content, conversationMessages)
+	if err == nil && classification.Confidence > 0.75 {
+		conversation.SetIntent(classification.Intent)
+		if updateErr := uc.convRepo.Update(ctx, conversation); updateErr != nil {
+			// Log but don't fail - intent update is not critical
+		}
+	}
+
+	// Generate contextual response using AI
+	responseContent, err := uc.aiClient.GenerateResponse(ctx, conversation, conversationMessages, req.Content)
+	if err != nil {
+		// Fallback to default response
+		responseContent = "Thank you for your message. How can I assist you further?"
+	}
+
 	assistantMessage := entities.NewMessage(
 		conversationID,
 		entities.RoleAssistant,
-		"Thank you for your message. How can I assist you further?",
+		responseContent,
 	)
 
 	if err := uc.messageRepo.Create(ctx, assistantMessage); err != nil {

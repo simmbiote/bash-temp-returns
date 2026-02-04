@@ -8,6 +8,7 @@ import (
 	"customer-support-api/internal/domain/services"
 	"customer-support-api/internal/infrastructure/clients/http"
 	"customer-support-api/internal/infrastructure/clients/mock"
+	"customer-support-api/internal/infrastructure/clients/openai"
 	"customer-support-api/internal/infrastructure/persistence/sqlite"
 	"customer-support-api/internal/interfaces/http/handlers"
 
@@ -86,13 +87,32 @@ func main() {
 		ordersAPIClient = http.NewOrdersAPIClient(ordersAPIURL)
 	}
 
+	// Initialize AI client
+	aiProvider := os.Getenv("AI_PROVIDER")
+	var aiClient services.AIClient
+
+	if aiProvider == "" || aiProvider == "mock" {
+		log.Println("Using mock AI client")
+		aiClient = mock.NewMockAIClient()
+	} else if aiProvider == "openai" {
+		openaiAPIKey := os.Getenv("OPENAI_API_KEY")
+		openaiModel := os.Getenv("OPENAI_MODEL")
+		if openaiModel == "" {
+			openaiModel = "gpt-4o" // Default model
+		}
+		log.Printf("Using OpenAI client with model: %s", openaiModel)
+		aiClient = openai.NewOpenAIClient(openaiAPIKey, openaiModel)
+	} else {
+		log.Fatalf("Unknown AI_PROVIDER: %s (supported: mock, openai)", aiProvider)
+	}
+
 	// Initialize use cases
 	createConvUseCase := usecases.NewCreateConversationUseCase(conversationRepo, messageRepo)
 	createReturnUseCase := usecases.NewCreateReturnRequestUseCase(returnRequestRepo, conversationRepo, ordersAPIClient)
 
 	// Initialize additional use cases for CRUD operations
 	getConversationUseCase := usecases.NewGetConversationUseCase(conversationRepo, messageRepo)
-	sendMessageUseCase := usecases.NewSendMessageUseCase(conversationRepo, messageRepo)
+	sendMessageUseCase := usecases.NewSendMessageUseCase(conversationRepo, messageRepo, aiClient)
 	getReturnUseCase := usecases.NewGetReturnRequestUseCase(returnRequestRepo)
 	listReturnsUseCase := usecases.NewListReturnRequestsUseCase(returnRequestRepo)
 
