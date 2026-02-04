@@ -27,6 +27,17 @@ func NewConversationHandler(
 	}
 }
 
+// CreateConversation godoc
+// @Summary Create a new conversation
+// @Description Create a new customer support conversation (natural language or guided flow)
+// @Tags Conversations
+// @Accept json
+// @Produce json
+// @Param request body dto.CreateConversationRequest true "Conversation creation request"
+// @Success 201 {object} dto.CreateConversationResponse
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /conversations [post]
 func (h *ConversationHandler) CreateConversation(c *gin.Context) {
 	var req dto.CreateConversationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -50,6 +61,15 @@ func (h *ConversationHandler) CreateConversation(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
+// GetConversation godoc
+// @Summary Get conversation details
+// @Description Retrieve a conversation with all its messages
+// @Tags Conversations
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Success 200 {object} dto.ConversationDetailsResponse
+// @Failure 404 {object} map[string]string "Conversation not found"
+// @Router /conversations/{id} [get]
 func (h *ConversationHandler) GetConversation(c *gin.Context) {
 	conversationID := c.Param("id")
 
@@ -62,6 +82,15 @@ func (h *ConversationHandler) GetConversation(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetMessages godoc
+// @Summary Get conversation messages
+// @Description Retrieve all messages in a conversation
+// @Tags Conversations
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Success 200 {object} map[string][]dto.MessageDTO
+// @Failure 404 {object} map[string]string "Conversation not found"
+// @Router /conversations/{id}/messages [get]
 func (h *ConversationHandler) GetMessages(c *gin.Context) {
 	conversationID := c.Param("id")
 
@@ -74,6 +103,18 @@ func (h *ConversationHandler) GetMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"messages": resp.Messages})
 }
 
+// SendMessage godoc
+// @Summary Send a message in a conversation
+// @Description Send a user message and receive an AI assistant response
+// @Tags Conversations
+// @Accept json
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Param request body dto.SendMessageRequest true "Message content"
+// @Success 200 {object} dto.SendMessageResponse
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /conversations/{id}/messages [post]
 func (h *ConversationHandler) SendMessage(c *gin.Context) {
 	conversationID := c.Param("id")
 
